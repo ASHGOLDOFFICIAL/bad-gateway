@@ -1,0 +1,32 @@
+name: Checks
+
+on:
+  pull_request:
+    branches: ["master"]
+  push:
+    branches: [master]
+    tags: ["*"]
+
+concurrency:
+  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+permissions:
+  contents: read
+
+jobs:
+  flake:
+    name: Flake
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check Nix flake inputs
+        uses: DeterminateSystems/flake-checker-action@main
+
+  typos:
+    name: Typos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check for typos
+        uses: crate-ci/typos@v1

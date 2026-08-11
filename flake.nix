@@ -29,7 +29,14 @@
         nightlyRustfmt = pkgs.rust-bin.nightly.latest.rustfmt;
       in {
         devShell = pkgs.mkShell {
-          nativeBuildInputs = [ rustToolchain nightlyRustfmt ];
+          nativeBuildInputs = [
+            nightlyRustfmt
+            rustToolchain
+            
+            pkgs.cargo-machete
+            pkgs.just
+            pkgs.typos
+          ];
           buildInputs = with pkgs; [ pkg-config ];
         };
       }
