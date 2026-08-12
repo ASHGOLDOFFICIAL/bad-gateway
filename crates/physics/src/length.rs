@@ -1,7 +1,8 @@
 use std::time::Duration;
 
 use crate::{
-    Area, CalculationError, CalculationResult, Speed, ValidationError, ValidationResult, ops,
+    Area, CalculationError, CalculationResult, Speed, ValidationError, ValidationResult,
+    traits::{Bounded, NonNegative, Validated},
 };
 
 /// Length, dimension L.
@@ -103,7 +104,7 @@ impl Ord for Length {
     }
 }
 
-impl ops::Validated for Length {
+impl Validated for Length {
     type Repr = f32;
 
     #[inline(always)]
@@ -117,15 +118,12 @@ impl ops::Validated for Length {
     }
 }
 
-impl ops::UpperBounded for Length {
+impl Bounded for Length {
     const MAX: Self = Self::MAX;
-}
-
-impl ops::LowerBounded for Length {
     const MIN: Self = Self::ZERO;
 }
 
-impl ops::NonNegative for Length {}
+impl NonNegative for Length {}
 
 #[cfg(test)]
 mod tests {

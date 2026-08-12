@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use crate::{CalculationError, CalculationResult, Energy, ValidationError, ValidationResult, ops};
+use crate::{
+    CalculationError, CalculationResult, Energy, ValidationError, ValidationResult,
+    traits::{Bounded, NonNegative, Validated},
+};
 
 /// Power, dimension ML²T⁻³ (mass times length squared per time cubed).
 #[must_use]
@@ -107,7 +110,7 @@ impl Ord for Power {
     }
 }
 
-impl ops::Validated for Power {
+impl Validated for Power {
     type Repr = f32;
 
     #[inline(always)]
@@ -121,15 +124,12 @@ impl ops::Validated for Power {
     }
 }
 
-impl ops::UpperBounded for Power {
+impl Bounded for Power {
     const MAX: Self = Self::MAX;
-}
-
-impl ops::LowerBounded for Power {
     const MIN: Self = Self::ZERO;
 }
 
-impl ops::NonNegative for Power {}
+impl NonNegative for Power {}
 
 #[cfg(test)]
 mod tests {

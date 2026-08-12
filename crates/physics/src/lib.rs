@@ -26,6 +26,7 @@ pub mod shapes;
 mod specific_heat_capacity;
 mod speed;
 mod temperature;
+pub mod traits;
 mod velocity;
 
 pub use acceleration::*;

@@ -1,4 +1,7 @@
-use crate::{ValidationError, ValidationResult, ops};
+use crate::{
+    ValidationError, ValidationResult,
+    traits::{Bounded, NonNegative, Validated},
+};
 
 /// Mass, dimension M.
 #[must_use]
@@ -67,7 +70,7 @@ impl Ord for Mass {
     }
 }
 
-impl ops::Validated for Mass {
+impl Validated for Mass {
     type Repr = f32;
 
     #[inline(always)]
@@ -81,15 +84,12 @@ impl ops::Validated for Mass {
     }
 }
 
-impl ops::UpperBounded for Mass {
+impl Bounded for Mass {
     const MAX: Self = Self::MAX;
-}
-
-impl ops::LowerBounded for Mass {
     const MIN: Self = Self::ZERO;
 }
 
-impl ops::NonNegative for Mass {}
+impl NonNegative for Mass {}
 
 #[cfg(test)]
 mod tests {

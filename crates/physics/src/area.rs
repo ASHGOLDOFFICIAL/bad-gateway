@@ -1,4 +1,7 @@
-use crate::{ValidationError, ValidationResult, ops};
+use crate::{
+    ValidationError, ValidationResult,
+    traits::{UpperBounded, Validated},
+};
 
 /// Area, dimension L² (length squared).
 #[must_use]
@@ -59,7 +62,7 @@ impl Ord for Area {
     }
 }
 
-impl ops::Validated for Area {
+impl Validated for Area {
     type Repr = f32;
 
     #[inline(always)]
@@ -73,7 +76,7 @@ impl ops::Validated for Area {
     }
 }
 
-impl ops::UpperBounded for Area {
+impl UpperBounded for Area {
     const MAX: Self = Self::MAX;
 }
 

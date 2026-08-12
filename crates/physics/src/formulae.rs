@@ -121,11 +121,13 @@ pub fn newtonian_cooling(
             "coefficient must be finite",
         ));
     }
-    ops::Delta::between(environment, surface).try_map(|delta| {
-        let heat_flux = heat_transfer_coefficient * delta.as_kelvins_f32();
-        let watts = heat_flux * surface_area.as_square_meters_f32();
-        Power::try_from_watts_f32(watts).map_err(CalculationError::from)
-    })
+    ops::Delta::between(environment, surface)
+        .map(|delta| {
+            let heat_flux = heat_transfer_coefficient * delta.as_kelvins_f32();
+            let watts = heat_flux * surface_area.as_square_meters_f32();
+            Power::try_from_watts_f32(watts).map_err(CalculationError::from)
+        })
+        .transpose()
 }
 
 #[cfg(test)]
@@ -217,7 +219,7 @@ mod tests {
         let area = Area::from_square_meters_f32(2.0);
         assert_eq!(
             newtonian_cooling(temperature, temperature, 5.0, area).unwrap(),
-            ops::Delta::None
+            ops::Delta::Zero
         );
     }
 }

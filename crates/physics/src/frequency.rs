@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use crate::{CalculationError, CalculationResult, ValidationError, ValidationResult, ops};
+use crate::{
+    CalculationError, CalculationResult, ValidationError, ValidationResult,
+    traits::{UpperBounded, Validated},
+};
 
 /// Frequency, dimension T⁻¹ (reciprocal time).
 #[must_use]
@@ -74,7 +77,7 @@ impl Ord for Frequency {
     }
 }
 
-impl ops::Validated for Frequency {
+impl Validated for Frequency {
     type Repr = f32;
 
     #[inline(always)]
@@ -88,7 +91,7 @@ impl ops::Validated for Frequency {
     }
 }
 
-impl ops::UpperBounded for Frequency {
+impl UpperBounded for Frequency {
     const MAX: Self = Self::MAX;
 }
 

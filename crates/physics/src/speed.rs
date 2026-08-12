@@ -1,4 +1,7 @@
-use crate::{Angle, ValidationError, ValidationResult, Velocity, ops};
+use crate::{
+    Angle, ValidationError, ValidationResult, Velocity,
+    traits::{Bounded, NonNegative, Validated},
+};
 
 /// Speed (the magnitude of a velocity), dimension LT⁻¹ (length per time).
 #[must_use]
@@ -81,7 +84,7 @@ impl Ord for Speed {
     }
 }
 
-impl ops::Validated for Speed {
+impl Validated for Speed {
     type Repr = f32;
 
     #[inline(always)]
@@ -95,15 +98,12 @@ impl ops::Validated for Speed {
     }
 }
 
-impl ops::UpperBounded for Speed {
+impl Bounded for Speed {
     const MAX: Self = Self::MAX;
-}
-
-impl ops::LowerBounded for Speed {
     const MIN: Self = Self::ZERO;
 }
 
-impl ops::NonNegative for Speed {}
+impl NonNegative for Speed {}
 
 #[cfg(test)]
 mod tests {

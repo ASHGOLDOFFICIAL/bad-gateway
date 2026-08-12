@@ -1,5 +1,6 @@
 use crate::{
-    CalculationError, CalculationResult, HeatCapacity, Mass, ValidationError, ValidationResult, ops,
+    CalculationError, CalculationResult, HeatCapacity, Mass, ValidationError, ValidationResult,
+    traits::{UpperBounded, Validated},
 };
 
 /// Specific heat capacity, dimension L²T⁻²Θ⁻¹ (energy per mass per
@@ -85,7 +86,7 @@ impl Ord for SpecificHeatCapacity {
     }
 }
 
-impl ops::Validated for SpecificHeatCapacity {
+impl Validated for SpecificHeatCapacity {
     type Repr = f32;
 
     #[inline(always)]
@@ -99,7 +100,7 @@ impl ops::Validated for SpecificHeatCapacity {
     }
 }
 
-impl ops::UpperBounded for SpecificHeatCapacity {
+impl UpperBounded for SpecificHeatCapacity {
     const MAX: Self = Self::MAX;
 }
 

@@ -1,5 +1,6 @@
 use crate::{
-    Acceleration, CalculationError, CalculationResult, Mass, ValidationError, ValidationResult, ops,
+    Acceleration, CalculationError, CalculationResult, Mass, ValidationError, ValidationResult,
+    traits::Validated,
 };
 
 /// Force, dimension MLT⁻² (mass times length per time squared).
@@ -77,7 +78,7 @@ impl std::ops::Neg for Force {
     }
 }
 
-impl ops::Validated for Force {
+impl Validated for Force {
     type Repr = glam::Vec2;
 
     #[inline(always)]

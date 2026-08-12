@@ -1,4 +1,7 @@
-use crate::{ValidationError, ValidationResult, ops};
+use crate::{
+    ValidationError, ValidationResult,
+    traits::{Bounded, NonNegative, Validated},
+};
 
 /// Temperature, dimension Θ.
 #[must_use]
@@ -95,7 +98,7 @@ impl Ord for Temperature {
     }
 }
 
-impl ops::Validated for Temperature {
+impl Validated for Temperature {
     type Repr = f32;
 
     #[inline(always)]
@@ -109,15 +112,12 @@ impl ops::Validated for Temperature {
     }
 }
 
-impl ops::UpperBounded for Temperature {
+impl Bounded for Temperature {
     const MAX: Self = Self::MAX;
-}
-
-impl ops::LowerBounded for Temperature {
     const MIN: Self = Self::ZERO;
 }
 
-impl ops::NonNegative for Temperature {}
+impl NonNegative for Temperature {}
 
 #[cfg(test)]
 mod tests {
