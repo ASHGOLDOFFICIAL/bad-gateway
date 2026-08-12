@@ -1,39 +1,57 @@
-/// The checked version of [`std::ops::Add`].
-pub trait CheckedAdd<Rhs = Self> {
-    /// The resulting type after applying the checked addition operator.
-    type Output;
+mod add;
+mod div;
+mod mul;
+mod sub;
 
-    /// Performs the `+` operation. Returns `None` if the result is invalid.
-    #[must_use]
-    fn checked_add(self, rhs: Rhs) -> Option<Self::Output>;
+pub use add::*;
+pub use div::*;
+pub use mul::*;
+pub use sub::*;
+
+/// Implements checked arithmetic traits for the given types by delegating to
+/// their inherent `checked_*` methods.
+macro_rules! impl_checked {
+    ($($ty:ty),+ $(,)?) => {
+        $(
+            impl CheckedAdd for $ty {
+                type Output = Self;
+
+                #[inline(always)]
+                fn checked_add(self, rhs: Self) -> Option<Self::Output> {
+                    <$ty>::checked_add(self, rhs)
+                }
+            }
+
+            impl CheckedSub for $ty {
+                type Output = Self;
+
+                #[inline(always)]
+                fn checked_sub(self, rhs: Self) -> Option<Self::Output> {
+                    <$ty>::checked_sub(self, rhs)
+                }
+            }
+
+            impl CheckedMul for $ty {
+                type Output = Self;
+
+                #[inline(always)]
+                fn checked_mul(self, rhs: Self) -> Option<Self::Output> {
+                    <$ty>::checked_mul(self, rhs)
+                }
+            }
+
+            impl CheckedDiv for $ty {
+                type Output = Self;
+
+                #[inline(always)]
+                fn checked_div(self, rhs: Self) -> Option<Self::Output> {
+                    <$ty>::checked_div(self, rhs)
+                }
+            }
+        )+
+    };
 }
 
-/// The checked version of [`std::ops::Sub`].
-pub trait CheckedSub<Rhs = Self> {
-    /// The resulting type after applying the checked subtraction operator.
-    type Output;
-
-    /// Performs the `-` operation. Returns `None` if the result is invalid.
-    #[must_use]
-    fn checked_sub(self, rhs: Rhs) -> Option<Self::Output>;
-}
-
-/// The checked version of [`std::ops::Mul`].
-pub trait CheckedMul<Rhs = Self> {
-    /// The resulting type after applying the checked multiplication operator.
-    type Output;
-
-    /// Performs the `*` operation. Returns `None` if the result is invalid.
-    #[must_use]
-    fn checked_mul(self, rhs: Rhs) -> Option<Self::Output>;
-}
-
-/// The checked version of [`std::ops::Div`].
-pub trait CheckedDiv<Rhs = Self> {
-    /// The resulting type after applying the checked division operator.
-    type Output;
-
-    /// Performs the `/` operation. Returns `None` if the result is invalid.
-    #[must_use]
-    fn checked_div(self, rhs: Rhs) -> Option<Self::Output>;
-}
+impl_checked!(
+    i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize
+);

@@ -1,4 +1,7 @@
-use crate::{ValidationError, ValidationResult, ops};
+use crate::{
+    ValidationError, ValidationResult,
+    traits::{Bounded, NonNegative, Validated},
+};
 
 /// Energy, dimension ML²T⁻² (mass times length squared per time squared).
 #[must_use]
@@ -119,7 +122,7 @@ impl Ord for Energy {
     }
 }
 
-impl ops::Validated for Energy {
+impl Validated for Energy {
     type Repr = f32;
 
     #[inline(always)]
@@ -133,15 +136,12 @@ impl ops::Validated for Energy {
     }
 }
 
-impl ops::UpperBounded for Energy {
+impl Bounded for Energy {
     const MAX: Self = Self::MAX;
-}
-
-impl ops::LowerBounded for Energy {
     const MIN: Self = Self::ZERO;
 }
 
-impl ops::NonNegative for Energy {}
+impl NonNegative for Energy {}
 
 #[cfg(test)]
 mod tests {

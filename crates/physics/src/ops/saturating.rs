@@ -1,21 +1,35 @@
-/// The saturating version of [`std::ops::Add`].
-pub trait SaturatingAdd<Rhs = Self> {
-    /// The resulting type after applying the saturating addition operator.
-    type Output;
+mod add;
+mod sub;
 
-    /// Performs the `+` operation. Returns the maximal value of `Output`
-    /// if the result is out of valid range.
-    #[must_use]
-    fn saturating_add(self, rhs: Rhs) -> Self::Output;
+pub use add::*;
+pub use sub::*;
+
+/// Implements saturating arithmetic for the given types by delegating to their
+/// inherent `saturating_*` methods.
+macro_rules! impl_saturating {
+    ($($ty:ty),+ $(,)?) => {
+        $(
+            impl SaturatingAdd for $ty {
+                type Output = Self;
+
+                #[inline]
+                fn saturating_add(self, rhs: Self) -> Self::Output {
+                    <$ty>::saturating_add(self, rhs)
+                }
+            }
+
+            impl SaturatingSub for $ty {
+                type Output = Self;
+
+                #[inline]
+                fn saturating_sub(self, rhs: Self) -> Self::Output {
+                    <$ty>::saturating_sub(self, rhs)
+                }
+            }
+        )+
+    };
 }
 
-/// The saturating version of [`std::ops::Sub`].
-pub trait SaturatingSub<Rhs = Self> {
-    /// The resulting type after applying the saturating subtraction operator.
-    type Output;
-
-    /// Performs the `-` operation. Returns the minimal value of `Output`
-    /// if the result is out of valid range.
-    #[must_use]
-    fn saturating_sub(self, rhs: Rhs) -> Self::Output;
-}
+impl_saturating!(
+    i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize
+);

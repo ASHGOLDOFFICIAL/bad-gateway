@@ -1,4 +1,4 @@
-use crate::{ValidationError, ValidationResult, ops};
+use crate::{ValidationError, ValidationResult, traits::Validated};
 
 /// Displacement, dimension L (change in position between two points).
 #[must_use]
@@ -56,7 +56,7 @@ impl std::ops::Neg for Displacement {
     }
 }
 
-impl ops::Validated for Displacement {
+impl Validated for Displacement {
     type Repr = glam::Vec2;
 
     #[inline(always)]

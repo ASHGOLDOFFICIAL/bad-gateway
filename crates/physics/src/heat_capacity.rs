@@ -1,6 +1,7 @@
 use crate::{
     CalculationError, CalculationResult, Energy, Temperature, ValidationError, ValidationResult,
     ops,
+    traits::{UpperBounded, Validated},
 };
 
 /// Total heat capacity, dimension ML²T⁻²Θ⁻¹ (energy per temperature).
@@ -57,10 +58,12 @@ impl HeatCapacity {
         self,
         energy: ops::Delta<Energy>,
     ) -> CalculationResult<ops::Delta<Temperature>> {
-        energy.try_map(|energy| {
-            Temperature::try_from_kelvins_f32(energy.as_joules_f32() / self.0)
-                .map_err(CalculationError::from)
-        })
+        energy
+            .map(|energy| {
+                Temperature::try_from_kelvins_f32(energy.as_joules_f32() / self.0)
+                    .map_err(CalculationError::from)
+            })
+            .transpose()
     }
 }
 
@@ -83,7 +86,7 @@ impl Ord for HeatCapacity {
     }
 }
 
-impl ops::Validated for HeatCapacity {
+impl Validated for HeatCapacity {
     type Repr = f32;
 
     #[inline(always)]
@@ -97,7 +100,7 @@ impl ops::Validated for HeatCapacity {
     }
 }
 
-impl ops::UpperBounded for HeatCapacity {
+impl UpperBounded for HeatCapacity {
     const MAX: Self = Self::MAX;
 }
 
@@ -144,8 +147,8 @@ mod tests {
             ops::Delta::Negative(step)
         );
         assert_eq!(
-            capacity.temperature_delta(ops::Delta::None).unwrap(),
-            ops::Delta::<Temperature>::None
+            capacity.temperature_delta(ops::Delta::Zero).unwrap(),
+            ops::Delta::<Temperature>::Zero
         );
     }
 }

@@ -1,4 +1,7 @@
-use crate::{ValidationError, ValidationResult, ops};
+use crate::{
+    ValidationError, ValidationResult,
+    traits::{UpperBounded, Validated},
+};
 
 /// Density, dimension ML⁻³ (mass per length cubed).
 #[must_use]
@@ -60,7 +63,7 @@ impl Ord for Density {
     }
 }
 
-impl ops::Validated for Density {
+impl Validated for Density {
     type Repr = f32;
 
     #[inline(always)]
@@ -74,7 +77,7 @@ impl ops::Validated for Density {
     }
 }
 
-impl ops::UpperBounded for Density {
+impl UpperBounded for Density {
     const MAX: Self = Self::MAX;
 }
 

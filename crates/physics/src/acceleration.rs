@@ -1,7 +1,8 @@
 use std::time::Duration;
 
 use crate::{
-    CalculationError, CalculationResult, ValidationError, ValidationResult, Velocity, ops,
+    CalculationError, CalculationResult, ValidationError, ValidationResult, Velocity,
+    traits::Validated,
 };
 
 /// Acceleration, dimension LT⁻² (length per time squared).
@@ -77,7 +78,7 @@ impl std::ops::Neg for Acceleration {
     }
 }
 
-impl ops::Validated for Acceleration {
+impl Validated for Acceleration {
     type Repr = glam::Vec2;
 
     #[inline(always)]
