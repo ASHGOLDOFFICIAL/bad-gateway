@@ -1,6 +1,6 @@
 use crate::{
-    Acceleration, CalculationError, CalculationResult, Mass, ValidationError, ValidationResult,
-    traits::Validated,
+    Acceleration, CalculationError, CalculationResult, ForceMagnitude, Mass, ValidationError,
+    ValidationResult, traits::Validated,
 };
 
 /// Force, dimension MLT⁻² (mass times length per time squared).
@@ -45,6 +45,14 @@ impl Force {
     #[inline(always)]
     pub fn is_zero(&self) -> bool {
         self.0 == Self::ZERO.0
+    }
+
+    /// This `Force`'s magnitude, independent of direction.
+    ///
+    /// Errors if the magnitude overflows `ForceMagnitude`'s valid range.
+    #[inline]
+    pub fn magnitude(&self) -> CalculationResult<ForceMagnitude> {
+        ForceMagnitude::try_from_newtons_f32(self.0.length()).map_err(CalculationError::from)
     }
 
     /// Derives [`Acceleration`] from this `Force` and given [`Mass`].
@@ -116,5 +124,21 @@ mod tests {
             acceleration.as_meters_per_square_second_vec2(),
             glam::Vec2::new(5.0, 2.0)
         );
+    }
+
+    #[test]
+    fn magnitude_reports_length_regardless_of_direction() {
+        let force = Force::try_from_newtons_vec2(glam::Vec2::new(3.0, 4.0)).unwrap();
+        assert_eq!(force.magnitude().unwrap().as_newtons_f32(), 5.0);
+    }
+
+    #[test]
+    fn magnitude_round_trips_through_force() {
+        let direction = crate::Angle::from_radians_f32(core::f32::consts::PI / 4.0);
+        let magnitude = ForceMagnitude::from_newtons_f32(12.0);
+
+        let round_tripped = magnitude.force(direction).magnitude().unwrap();
+
+        assert!((round_tripped.as_newtons_f32() - 12.0).abs() < f32::EPSILON);
     }
 }

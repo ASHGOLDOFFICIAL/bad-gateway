@@ -1,8 +1,8 @@
 //! Formulas that combine multiple physics quantities into a derived result.
 
 use crate::{
-    Angle, Area, CalculationError, CalculationResult, Density, Force, Mass, Power, Speed,
-    Temperature, Velocity, ops,
+    Angle, Area, CalculationError, CalculationResult, Density, Force, ForceMagnitude, Mass, Power,
+    Speed, Temperature, Velocity, ops,
 };
 
 /// Drag opposing `velocity`.
@@ -46,17 +46,19 @@ pub const fn traction(
     traction_coefficient: f32,
     gravity: f32,
     mass: Mass,
-) -> CalculationResult<f32> {
+) -> CalculationResult<ForceMagnitude> {
     if !traction_coefficient.is_finite() || !gravity.is_finite() {
         return Err(CalculationError::InvalidArgument(
             "gravity and coefficient must be finite",
         ));
     }
-    let result = traction_coefficient * gravity * mass.as_kilograms_f32();
-    if !result.is_finite() {
-        Err(CalculationError::Overflow("result is not finite"))
-    } else {
-        Ok(result)
+    match ForceMagnitude::try_from_newtons_f32(
+        traction_coefficient * gravity * mass.as_kilograms_f32(),
+    ) {
+        Ok(traction) => Ok(traction),
+        Err(_) => Err(CalculationError::Overflow(
+            "traction must be finite and non-negative",
+        )),
     }
 }
 
@@ -136,8 +138,7 @@ mod tests {
 
     #[test]
     fn drag_opposes_velocity() {
-        let velocity =
-            Velocity::try_from_meters_per_second_vec2(glam::Vec2::new(10.0, 0.0)).unwrap();
+        let velocity = Velocity::from_meters_per_second_vec2(glam::Vec2::new(10.0, 0.0));
         let air_density = Density::from_kilograms_per_cubic_meter_f32(1.2);
         let frontal_area = Area::from_square_meters_f32(2.0);
         let force = drag(1.0, frontal_area, air_density, velocity);
@@ -159,8 +160,7 @@ mod tests {
     #[test]
     fn rolling_resistance_opposes_velocity_independent_of_speed() {
         let mass = Mass::from_kilograms_f32(1_000.0);
-        let velocity =
-            Velocity::try_from_meters_per_second_vec2(glam::Vec2::new(1.0, 0.0)).unwrap();
+        let velocity = Velocity::from_meters_per_second_vec2(glam::Vec2::new(1.0, 0.0));
         let force = rolling_resistance(0.02, 9.8, mass, velocity);
         assert_eq!(
             force.unwrap().as_newtons_vec2().normalize(),
@@ -171,8 +171,8 @@ mod tests {
     #[test]
     fn rolling_resistance_is_independent_of_speed() {
         let mass = Mass::from_kilograms_f32(1_000.0);
-        let slow = Velocity::try_from_meters_per_second_vec2(glam::Vec2::new(1.0, 0.0)).unwrap();
-        let fast = Velocity::try_from_meters_per_second_vec2(glam::Vec2::new(100.0, 0.0)).unwrap();
+        let slow = Velocity::from_meters_per_second_vec2(glam::Vec2::new(1.0, 0.0));
+        let fast = Velocity::from_meters_per_second_vec2(glam::Vec2::new(100.0, 0.0));
 
         let slow_force = rolling_resistance(0.02, 9.8, mass, slow).unwrap();
         let fast_force = rolling_resistance(0.02, 9.8, mass, fast).unwrap();
