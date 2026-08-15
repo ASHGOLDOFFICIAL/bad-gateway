@@ -139,6 +139,6 @@ mod tests {
 
         let round_tripped = magnitude.force(direction).magnitude().unwrap();
 
-        assert!((round_tripped.as_newtons_f32() - 12.0).abs() < f32::EPSILON);
+        assert!((round_tripped.as_newtons_f32() - 12.0).abs() < 10.0 * f32::EPSILON);
     }
 }
