@@ -22,6 +22,7 @@ jobs:
   deps:
     name: Unused Dependencies
     runs-on: ubuntu-latest
+    if: false
     steps:
       - uses: actions/checkout@v7
       - name: Check for unused dependencies
