@@ -1,4 +1,9 @@
-use crate::{ValidationError, ValidationResult, traits::Validated};
+use std::time::Duration;
+
+use crate::{
+    CalculationError, CalculationResult, ValidationError, ValidationResult, Velocity,
+    traits::Validated,
+};
 
 /// Displacement, dimension L (change in position between two points).
 #[must_use]
@@ -44,6 +49,29 @@ impl Displacement {
     pub fn is_zero(&self) -> bool {
         self.0 == Self::ZERO.0
     }
+
+    /// Derives the [`Velocity`] that covers this `Displacement` over the given
+    /// [`Duration`].
+    ///
+    /// It uses `v = d / dt`, where
+    /// - `v` is velocity,
+    /// - `d` is this displacement,
+    /// - `dt` is time passed.
+    ///
+    /// Given `duration` must be non-zero.
+    #[inline]
+    pub fn velocity(self, duration: Duration) -> CalculationResult<Velocity> {
+        if duration.is_zero() {
+            Err(CalculationError::InvalidArgument(
+                "duration must be non-zero",
+            ))
+        } else {
+            Velocity::try_from_meters_per_second_vec2(
+                self.as_meters_vec2() / duration.as_secs_f32(),
+            )
+            .map_err(CalculationError::from)
+        }
+    }
 }
 
 impl std::ops::Neg for Displacement {
@@ -85,5 +113,37 @@ mod tests {
         let non_zero_vec = glam::Vec2::new(1.0, 0.0);
         let from_non_zero = Displacement::try_from_meters_vec2(non_zero_vec).unwrap();
         assert!(!from_non_zero.is_zero());
+    }
+
+    #[test]
+    fn velocity_divides_by_duration() {
+        let displacement = Displacement::from_meters_vec2(glam::Vec2::new(3.0, 6.0));
+
+        let velocity = displacement.velocity(Duration::from_secs(2)).unwrap();
+
+        assert_eq!(
+            velocity.as_meters_per_second_vec2(),
+            glam::Vec2::new(1.5, 3.0),
+        );
+    }
+
+    #[test]
+    fn velocity_round_trips_through_displacement() {
+        let velocity = Velocity::from_meters_per_second_vec2(glam::Vec2::new(3.0, -4.0));
+        let duration = Duration::from_millis(250);
+
+        let round_tripped = velocity
+            .displacement(duration)
+            .unwrap()
+            .velocity(duration)
+            .unwrap();
+
+        assert_eq!(round_tripped, velocity);
+    }
+
+    #[test]
+    fn velocity_rejects_a_zero_duration() {
+        let displacement = Displacement::from_meters_vec2(glam::Vec2::new(1.0, 0.0));
+        assert!(displacement.velocity(Duration::ZERO).is_err());
     }
 }
