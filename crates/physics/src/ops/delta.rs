@@ -1,5 +1,5 @@
 use crate::{
-    ops::{CheckedAdd, SaturatingSub},
+    ops::{CheckedAdd, SaturatingAdd, SaturatingSub},
     traits::NonNegative,
 };
 
@@ -226,6 +226,21 @@ where
     }
 }
 
+impl<T: NonNegative> Delta<T>
+where
+    T: SaturatingAdd<Output = T> + SaturatingSub<Output = T>,
+{
+    /// Applies this `Delta` to `base`, saturating on overflows.
+    #[must_use]
+    pub fn saturating_apply_to(self, base: T) -> T {
+        match self {
+            Self::Zero => base,
+            Self::Positive(delta) => base.saturating_add(delta),
+            Self::Negative(delta) => base.saturating_sub(delta),
+        }
+    }
+}
+
 impl<T: NonNegative> std::ops::Neg for Delta<T> {
     type Output = Self;
 
@@ -290,6 +305,32 @@ where
     }
 }
 
+impl<T: NonNegative> SaturatingAdd for Delta<T>
+where
+    T: Copy + PartialOrd + SaturatingAdd<Output = T> + SaturatingSub<Output = T>,
+{
+    type Output = Self;
+
+    /// Combines two deltas, netting out opposing directions. Addition of the
+    /// same directions saturates inner value.
+    fn saturating_add(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Self::Zero, other) | (other, Self::Zero) => other,
+            (Self::Positive(e1), Self::Positive(e2)) => Self::Positive(e1.saturating_add(e2)),
+            (Self::Negative(e1), Self::Negative(e2)) => Self::Negative(e1.saturating_add(e2)),
+            (Self::Positive(e1), Self::Negative(e2)) | (Self::Negative(e2), Self::Positive(e1)) => {
+                if e1 < e2 {
+                    Self::Negative(e2.saturating_sub(e1))
+                } else if e1 > e2 {
+                    Self::Positive(e1.saturating_sub(e2))
+                } else {
+                    Self::Zero
+                }
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -312,6 +353,14 @@ mod tests {
 
         fn checked_add(self, rhs: Self) -> Option<Self::Output> {
             Some(Self(self.0 + rhs.0))
+        }
+    }
+
+    impl SaturatingAdd for Quantity {
+        type Output = Self;
+
+        fn saturating_add(self, rhs: Self) -> Self::Output {
+            Self((self.0 + rhs.0).min(100))
         }
     }
 
@@ -577,6 +626,43 @@ mod tests {
                 .checked_apply_to(Quantity(5))
                 .unwrap(),
             Quantity(0)
+        );
+    }
+
+    #[test]
+    fn saturating_applied_zero_leaves_base_unchanged() {
+        assert_eq!(Delta::Zero.saturating_apply_to(Quantity(5)), Quantity(5));
+    }
+
+    #[test]
+    fn saturating_applied_positive_increases_base() {
+        assert_eq!(
+            Delta::Positive(Quantity(3)).saturating_apply_to(Quantity(5)),
+            Quantity(8)
+        );
+    }
+
+    #[test]
+    fn saturating_applied_negative_decreases_base_within_bounds() {
+        assert_eq!(
+            Delta::Negative(Quantity(3)).saturating_apply_to(Quantity(5)),
+            Quantity(2)
+        );
+    }
+
+    #[test]
+    fn saturating_applied_negative_saturates_at_zero() {
+        assert_eq!(
+            Delta::Negative(Quantity(10)).saturating_apply_to(Quantity(5)),
+            Quantity(0)
+        );
+    }
+
+    #[test]
+    fn saturating_applied_saturates_on_addition_overflow() {
+        assert_eq!(
+            Delta::Positive(Quantity(100)).saturating_apply_to(Quantity(5)),
+            Quantity(100)
         );
     }
 
