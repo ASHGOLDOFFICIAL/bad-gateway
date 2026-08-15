@@ -40,10 +40,41 @@ impl Speed {
         }
     }
 
+    /// Creates a new `Speed` from the specified [`f32`], in kilometres per
+    /// hour.
+    ///
+    /// # Panics
+    /// This constructor will panic if value is negative, overflows `Speed`
+    /// or not finite.
+    #[inline(always)]
+    pub fn from_kilometres_per_hour_f32(value: f32) -> Self {
+        Self::try_from_kilometres_per_hour_f32(value).expect("unsafe method")
+    }
+
+    /// The checked version of
+    /// [`from_kilometres_per_hour_f32`](Self::from_kilometres_per_hour_f32).
+    ///
+    /// This constructor will return an `Err` if value is negative,
+    /// overflows `Speed` or not finite.
+    #[inline]
+    pub const fn try_from_kilometres_per_hour_f32(value: f32) -> ValidationResult<Self> {
+        let kmph = value / 3.6;
+        if !kmph.is_finite() || kmph < 0.0 {
+            Err(ValidationError("speed must be finite and non-negative"))
+        } else {
+            Ok(Self(kmph))
+        }
+    }
+
     /// Returns this `Speed` as [`f32`], in meters per second.
     #[inline(always)]
     pub const fn as_meters_per_second_f32(&self) -> f32 {
         self.0
+    }
+
+    /// Returns this `Speed` as [`f32`], in kilometres per hour.
+    pub const fn as_kilometres_per_hour_f32(&self) -> f32 {
+        self.0 * 3.6
     }
 
     /// Returns `true` if this `Speed` is exactly zero.
