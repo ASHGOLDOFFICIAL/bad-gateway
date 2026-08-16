@@ -56,6 +56,14 @@ pub(crate) type ValidationResult<T> = Result<T, ValidationError>;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ValidationError(&'static str);
 
+impl ValidationError {
+    #[inline(always)]
+    /// Returns the underlying message.
+    pub const fn message(&self) -> &'static str {
+        self.0
+    }
+}
+
 impl std::fmt::Display for ValidationError {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

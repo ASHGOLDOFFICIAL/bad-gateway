@@ -1,6 +1,7 @@
 use crate::{
     Area, CalculationError, CalculationResult, Length, ValidationError, ValidationResult,
     ops::{CheckedAdd, CheckedMul},
+    shapes::Circle,
 };
 
 /// Empirical drag coefficient table for a cylinder at a given aspect ratio
@@ -45,9 +46,6 @@ fn drag_coefficient(height: f32, diameter: f32) -> f32 {
 }
 
 /// A right circular cylinder, described by its radius and height.
-///
-/// Carries no position of its own; used to derive aerodynamic properties
-/// for a shape positioned elsewhere in the simulation.
 #[must_use]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Cylinder {
@@ -122,6 +120,12 @@ impl Cylinder {
         ))
     }
 
+    /// This `Cylinder`'s base circle.
+    #[inline]
+    pub fn base(&self) -> Circle {
+        Circle::new(self.radius).expect("cylinder's radius is positive")
+    }
+
     /// This `Cylinder`'s drag coefficient, interpolated from its aspect
     /// ratio (height / diameter).
     #[inline]
@@ -163,6 +167,12 @@ mod tests {
     fn base_diameter() {
         let cylinder = Cylinder::new(length(2.0), length(3.0)).unwrap();
         assert_eq!(cylinder.diameter().unwrap().as_meters_f32(), 4.0);
+    }
+
+    #[test]
+    fn base_matches_cylinder_radius() {
+        let cylinder = Cylinder::new(length(2.0), length(3.0)).unwrap();
+        assert_eq!(cylinder.base().radius(), length(2.0));
     }
 
     #[test]
