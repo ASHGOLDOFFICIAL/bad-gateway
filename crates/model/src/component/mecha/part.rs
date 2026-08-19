@@ -1,13 +1,13 @@
 //! Contains [`Part`] and its types.
 
 mod battery;
-mod brake;
-mod engine;
+mod generator;
+mod legs;
 mod thruster;
 
 pub use battery::*;
-pub use brake::*;
-pub use engine::*;
+pub use generator::*;
+pub use legs::*;
 pub use thruster::*;
 
 use hecs::Entity;
