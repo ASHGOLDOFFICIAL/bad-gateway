@@ -1,4 +1,7 @@
-use physics::{Energy, ops::CheckedSub};
+use physics::{
+    Energy,
+    ops::{CheckedSub, SaturatingAdd, SaturatingSub},
+};
 
 use crate::component::ComponentResult;
 
@@ -31,6 +34,19 @@ impl Battery {
         Self::new(capacity, capacity)
     }
 
+    /// Returns how much [`Energy`] this `Battery` could still discharge.
+    #[inline(always)]
+    pub const fn available(&self) -> Energy {
+        self.charge
+    }
+
+    /// Returns how much [`Energy`] this `Battery`
+    /// could still accept before it's full.
+    #[inline]
+    pub fn headroom(&self) -> Energy {
+        self.capacity.saturating_sub(self.charge)
+    }
+
     /// Returns this `Battery`'s `charge` to `capacity` ratio.
     ///
     /// Returned value is guaranteed to be in [0, 1] range.
@@ -39,6 +55,16 @@ impl Battery {
         let capacity_value = self.capacity.as_joules_f32();
         let charge_value = self.charge.as_joules_f32();
         (charge_value / capacity_value).clamp(0.0, 1.0)
+    }
+
+    /// Adds up to `amount`, returning how much [`Energy`] was actually
+    /// accepted.
+    #[inline]
+    pub fn charge(&mut self, amount: Energy) -> Energy {
+        let headroom = self.capacity.saturating_sub(self.charge);
+        let accepted = amount.min(headroom);
+        self.charge = self.charge.saturating_add(accepted);
+        accepted
     }
 
     /// Drains up to `amount`, returning how much [`Energy`] was actually taken.
@@ -77,6 +103,28 @@ mod tests {
     #[test]
     fn charge_ratio() {
         assert_eq!(battery(10.0, 5.0).charge_ratio(), 0.5);
+    }
+
+    #[test]
+    fn charge_accepts_up_to_available_headroom() {
+        let mut battery = battery(10.0, 0.0);
+
+        let accepted = battery.charge(Energy::from_joules_f32(3.0));
+        assert_eq!(accepted.as_joules_f32(), 3.0);
+        assert_eq!(battery.charge_ratio(), 0.3);
+
+        let accepted = battery.charge(Energy::from_joules_f32(100.0));
+        assert_eq!(accepted.as_joules_f32(), 7.0);
+        assert_eq!(battery.charge_ratio(), 1.0);
+    }
+
+    #[test]
+    fn charge_accepts_nothing_once_full() {
+        let mut battery = battery(10.0, 10.0);
+
+        let accepted = battery.charge(Energy::from_joules_f32(5.0));
+        assert_eq!(accepted.as_joules_f32(), 0.0);
+        assert_eq!(battery.charge_ratio(), 1.0);
     }
 
     #[test]
