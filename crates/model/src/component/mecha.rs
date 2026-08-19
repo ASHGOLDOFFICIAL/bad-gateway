@@ -4,7 +4,7 @@ pub mod stat;
 
 use hecs::{Entity, World};
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     sync::Arc,
 };
 
@@ -27,30 +27,38 @@ pub fn build_mecha(world: &World, root: Entity) -> Mecha {
 
 /// Marks entity as mecha.
 #[derive(Clone, Debug, PartialEq)]
-pub struct Mecha(PartTree);
+pub struct Mecha {
+    part_tree: PartTree,
+    children: HashSet<Entity>,
+}
 
 impl Mecha {
     fn from_children(root: Entity, children_map: &HashMap<Entity, Vec<Entity>>) -> Self {
-        Self(build_tree(root, children_map))
+        let part_tree = build_tree(root, children_map);
+        let children = part_tree.iter_bfs().collect();
+        Self {
+            part_tree,
+            children,
+        }
     }
 
     /// Checks if given [`Entity`] is this `Mecha`'s root or one of the parts
     /// mounted on it, transitively.
-    pub fn has_part(&self, entity: Entity) -> bool {
-        self.0.contains(entity)
+    pub fn has_part(&self, entity: &Entity) -> bool {
+        self.children.contains(entity)
     }
 
     /// Every [`Entity`] belonging to this `Mecha`, in parent-before-child
     /// order.
     pub fn parts(&self) -> impl Iterator<Item = Entity> + '_ {
-        self.0.iter_bfs()
+        self.part_tree.iter_bfs()
     }
 
     /// Every [`Entity`] belonging to this `Mecha` paired with the [`Entity`]
     /// it's mounted on ([`None`] for the root), in parent-before-child order.
     pub fn parts_with_parent(&self) -> impl Iterator<Item = (Entity, Option<Entity>)> + '_ {
         PartsWithParentIter {
-            queue: VecDeque::from([(&self.0, None)]),
+            queue: VecDeque::from([(&self.part_tree, None)]),
         }
     }
 }
@@ -117,10 +125,6 @@ impl PartTree {
         }
     }
 
-    fn contains(&self, entity: Entity) -> bool {
-        self.root == entity || self.children.iter().any(|subtree| subtree.contains(entity))
-    }
-
     fn iter_bfs(&self) -> PartTreeBfsIter<'_> {
         PartTreeBfsIter {
             queue: VecDeque::from([self]),
@@ -163,10 +167,10 @@ mod tests {
 
         let mecha = build_mecha(&world, root);
 
-        assert!(mecha.has_part(root));
-        assert!(mecha.has_part(frame));
-        assert!(mecha.has_part(weapon));
-        assert!(!mecha.has_part(unrelated));
+        assert!(mecha.has_part(&root));
+        assert!(mecha.has_part(&frame));
+        assert!(mecha.has_part(&weapon));
+        assert!(!mecha.has_part(&unrelated));
 
         let parts: HashSet<_> = mecha.parts().collect();
         assert_eq!(parts, HashSet::from([root, frame, weapon]));
