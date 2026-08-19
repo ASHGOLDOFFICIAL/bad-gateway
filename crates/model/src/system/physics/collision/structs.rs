@@ -21,9 +21,12 @@ impl Aabb {
         Self { position, size }
     }
 
+    /// Builds the [`Aabb`] from the given [`Rect`]
+    /// centered on the given position.
     #[inline]
     pub const fn from_rect(position: glam::Vec2, rect: Rect) -> Self {
         let size = glam::Vec2::new(rect.width().as_meters_f32(), rect.height().as_meters_f32());
+        let position = glam::Vec2::new(position.x - size.x / 2.0, position.y - size.y / 2.0);
         Self { position, size }
     }
 
@@ -48,7 +51,21 @@ impl Aabb {
 
 #[cfg(test)]
 mod tests {
+    use physics::Length;
+
     use super::*;
+
+    #[test]
+    fn from_rect_centers_on_the_given_position() {
+        let rect = Rect::new(Length::from_meters_f32(2.0), Length::from_meters_f32(4.0)).unwrap();
+        let position = glam::Vec2::ZERO;
+
+        let aabb = Aabb::from_rect(position, rect);
+
+        assert_eq!(aabb.center(), position);
+        assert_eq!(aabb.position, glam::Vec2::new(-1.0, -2.0));
+        assert_eq!(aabb.max(), glam::Vec2::new(1.0, 2.0));
+    }
 
     #[test]
     fn center_is_position_plus_half_size() {
