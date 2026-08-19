@@ -9,7 +9,8 @@ use crate::component::{ComponentResult, DamagePerSecond};
 pub struct SafeTemperatureRange {
     min: Temperature,
     max: Temperature,
-    damage_per_second: DamagePerSecond,
+    idle_damage_per_second: DamagePerSecond,
+    active_damage_per_second: DamagePerSecond,
 }
 
 impl SafeTemperatureRange {
@@ -20,7 +21,8 @@ impl SafeTemperatureRange {
     pub fn new(
         min: Temperature,
         max: Temperature,
-        damage_per_second: DamagePerSecond,
+        idle_damage_per_second: DamagePerSecond,
+        active_damage_per_second: DamagePerSecond,
     ) -> ComponentResult<Self> {
         if min >= max {
             Err("max must be greater than min")
@@ -28,15 +30,21 @@ impl SafeTemperatureRange {
             Ok(Self {
                 min,
                 max,
-                damage_per_second,
+                idle_damage_per_second,
+                active_damage_per_second,
             })
         }
     }
 
-    /// [`DamagePerSecond`] received by a part
-    /// when working outside of safe range.
-    pub const fn damage_per_second(&self) -> DamagePerSecond {
-        self.damage_per_second
+    /// [`DamagePerSecond`] received by a part outside of safe
+    /// range, depending on whether it's currently active.
+    #[inline(always)]
+    pub const fn damage_per_second(&self, is_active: bool) -> DamagePerSecond {
+        if is_active {
+            self.active_damage_per_second
+        } else {
+            self.idle_damage_per_second
+        }
     }
 
     /// Checks if given [`Temperature`] is below this `SafeTemperatureRange`.
@@ -64,11 +72,16 @@ mod tests {
 
     use super::*;
 
+    fn dps(value: f32) -> DamagePerSecond {
+        DamagePerSecond::from(DamageUnit::try_from(value).unwrap())
+    }
+
     fn range(min: f32, max: f32) -> SafeTemperatureRange {
         SafeTemperatureRange::new(
             Temperature::from_kelvins_f32(min),
             Temperature::from_kelvins_f32(max),
-            DamagePerSecond::from(DamageUnit::try_from(1.0).unwrap()),
+            dps(1.0),
+            dps(1.0),
         )
         .unwrap()
     }
@@ -76,12 +89,32 @@ mod tests {
     #[test]
     fn new_rejects_max_not_greater_than_min() {
         let temperature = Temperature::from_kelvins_f32(100.0);
-        let dps = DamagePerSecond::from(DamageUnit::try_from(1.0).unwrap());
-        assert!(SafeTemperatureRange::new(temperature, temperature, dps).is_err());
+        assert!(SafeTemperatureRange::new(temperature, temperature, dps(1.0), dps(1.0)).is_err());
         assert!(
-            SafeTemperatureRange::new(Temperature::from_kelvins_f32(200.0), temperature, dps)
-                .is_err()
+            SafeTemperatureRange::new(
+                Temperature::from_kelvins_f32(200.0),
+                temperature,
+                dps(1.0),
+                dps(1.0)
+            )
+            .is_err()
         );
+    }
+
+    #[test]
+    fn damage_per_second_depends_on_is_active() {
+        let idle = dps(1.0);
+        let active = dps(10.0);
+        let range = SafeTemperatureRange::new(
+            Temperature::from_kelvins_f32(100.0),
+            Temperature::from_kelvins_f32(200.0),
+            idle,
+            active,
+        )
+        .unwrap();
+
+        assert_eq!(range.damage_per_second(false), idle);
+        assert_eq!(range.damage_per_second(true), active);
     }
 
     #[test]
