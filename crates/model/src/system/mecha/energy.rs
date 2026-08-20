@@ -241,7 +241,7 @@ mod tests {
 
     fn mecha(world: &mut World) -> TestMecha {
         let root = world.spawn(());
-        let frame = world.spawn((Part::new("frame".to_string(), root).unwrap(),));
+        let frame = world.spawn((Part::new("frame".to_string(), Some(root)).unwrap(),));
         TestMecha { root, frame }
     }
 
@@ -260,7 +260,7 @@ mod tests {
         active: bool,
     ) -> Entity {
         let entity = world.spawn((
-            Part::new("consumer".to_string(), mounted_on).unwrap(),
+            Part::new("consumer".to_string(), Some(mounted_on)).unwrap(),
             consumption,
         ));
         if active {
@@ -271,14 +271,14 @@ mod tests {
 
     fn spawn_battery(world: &mut World, mounted_on: Entity, battery: Battery) -> Entity {
         world.spawn((
-            Part::new("battery".to_string(), mounted_on).unwrap(),
+            Part::new("battery".to_string(), Some(mounted_on)).unwrap(),
             battery,
         ))
     }
 
     fn spawn_generator(world: &mut World, mounted_on: Entity, power: Power) -> Entity {
         world.spawn((
-            Part::new("generator".to_string(), mounted_on).unwrap(),
+            Part::new("generator".to_string(), Some(mounted_on)).unwrap(),
             Generator::from(power),
         ))
     }
