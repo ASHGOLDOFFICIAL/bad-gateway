@@ -16,10 +16,9 @@ pub fn build_mecha(world: &World, root: Entity) -> Mecha {
     let mut children_map: HashMap<Entity, Vec<Entity>> = HashMap::new();
 
     for (entity, part) in world.query::<(Entity, &Part)>().iter() {
-        children_map
-            .entry(part.mounted_on())
-            .or_default()
-            .push(entity)
+        if let Some(parent) = part.mounted_on() {
+            children_map.entry(parent).or_default().push(entity);
+        }
     }
 
     Mecha::from_children(root, &children_map)
@@ -154,7 +153,7 @@ mod tests {
     use std::collections::HashSet;
 
     fn spawn_part(world: &mut World, mounted_on: Entity) -> Entity {
-        world.spawn((Part::new("part".to_string(), mounted_on).unwrap(),))
+        world.spawn((Part::new("part".to_string(), Some(mounted_on)).unwrap(),))
     }
 
     #[test]
