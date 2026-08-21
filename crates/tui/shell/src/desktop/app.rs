@@ -138,6 +138,10 @@ impl App for Desktop {
                     None => AppSignal::Continue,
                 }
             }
+            Event::Mouse(mouse) if matches!(mouse.kind, MouseEventKind::Moved) => {
+                self.selected = grid(area).hit_test(self.entries.len(), mouse.column, mouse.row);
+                AppSignal::Continue
+            }
             _ => AppSignal::Continue,
         }
     }
@@ -215,4 +219,72 @@ fn truncate_name(name: &str, max_width: usize) -> Option<String> {
     let mut truncated: String = name.chars().take(max_width - 1).collect();
     truncated.push('…');
     Some(truncated)
+}
+
+#[cfg(test)]
+mod tests {
+    use crossterm::event::{KeyModifiers, MouseEvent};
+
+    use super::*;
+    use crate::Icon;
+
+    const ICON: Icon = Icon::solid([[' '; ICON_COLS]; ICON_ROWS], Color::White);
+
+    fn desktop_with_entries(count: usize) -> Desktop {
+        let mut desktop = Desktop::default();
+        for i in 0..count {
+            desktop.add_entry(Entry::new(format!("Entry {i}"), ICON, || {
+                Box::new(Desktop::default())
+            }));
+        }
+        desktop
+    }
+
+    fn area() -> Rect {
+        Rect::new(0, 0, 80, 24)
+    }
+
+    fn moved(column: u16, row: u16) -> Event {
+        Event::Mouse(MouseEvent {
+            kind: MouseEventKind::Moved,
+            column,
+            row,
+            modifiers: KeyModifiers::NONE,
+        })
+    }
+
+    #[test]
+    fn hovering_an_entry_highlights_it_without_opening_it() {
+        let mut desktop = desktop_with_entries(2);
+        let area = area();
+        let rect = grid(area).iter(2).next().unwrap();
+
+        let signal = desktop.handle_event(&moved(rect.x, rect.y), area);
+        assert!(matches!(signal, AppSignal::Continue));
+        assert_eq!(desktop.selected, Some(0));
+    }
+
+    #[test]
+    fn hovering_empty_space_clears_the_highlight() {
+        let mut desktop = desktop_with_entries(1);
+        let area = area();
+        let rect = grid(area).iter(1).next().unwrap();
+
+        desktop.selected = Some(0);
+        let signal = desktop.handle_event(&moved(rect.right(), rect.bottom()), area);
+        assert!(matches!(signal, AppSignal::Continue));
+        assert!(desktop.selected.is_none());
+    }
+
+    #[test]
+    fn hovering_a_different_entry_moves_the_highlight() {
+        let mut desktop = desktop_with_entries(2);
+        let area = area();
+        let rects: Vec<Rect> = grid(area).iter(2).collect();
+
+        desktop.selected = Some(0);
+        let signal = desktop.handle_event(&moved(rects[1].x, rects[1].y), area);
+        assert!(matches!(signal, AppSignal::Continue));
+        assert_eq!(desktop.selected, Some(1));
+    }
 }
