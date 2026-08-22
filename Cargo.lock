@@ -531,6 +531,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "desktop"
+version = "0.1.0"
+dependencies = [
+ "crossterm",
+ "i18n-embed",
+ "i18n-embed-fl",
+ "once_cell",
+ "ratatui",
+ "rust-embed",
+ "shell",
+ "unic-langid",
+]
+
+[[package]]
 name = "digest"
 version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"

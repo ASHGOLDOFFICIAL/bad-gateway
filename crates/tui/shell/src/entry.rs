@@ -1,6 +1,4 @@
-use crate::App;
-
-use super::icon::Icon;
+use crate::{App, icon::Icon};
 
 /// A desktop icon paired with a lazy constructor for the `App` it opens.
 #[must_use]
@@ -27,19 +25,19 @@ impl Entry {
 
     /// This `Entry`'s display name.
     #[inline(always)]
-    pub(crate) fn name(&self) -> &str {
+    pub fn name(&self) -> &str {
         &self.name
     }
 
     /// This `Entry`'s icon.
     #[inline(always)]
-    pub(crate) const fn icon(&self) -> Icon {
+    pub const fn icon(&self) -> Icon {
         self.icon
     }
 
     /// Launches this `Entry`'s app.
     #[inline(always)]
-    pub(crate) fn launch(&self) -> Box<dyn App> {
+    pub fn launch(&self) -> Box<dyn App> {
         (self.launch)()
     }
 }

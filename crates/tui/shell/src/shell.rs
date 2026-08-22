@@ -19,8 +19,7 @@ use i18n_embed_fl::fl;
 use ratatui::{Terminal, backend::CrosstermBackend, layout::Rect};
 
 use crate::{
-    App, AppSignal, Entry,
-    desktop::Desktop,
+    App, AppSignal,
     i18n::LOADER,
     topbar::{Menu, MenuItem, TopBar, TopBarOutcome},
 };
@@ -38,31 +37,27 @@ enum ShellAction {
 #[must_use]
 pub struct Shell {
     topbar: TopBar<ShellAction>,
-    desktop: Desktop,
+    default_app: Box<dyn App>,
     open: Option<Box<dyn App>>,
     frame_duration: Duration,
     should_quit: bool,
 }
 
 impl Shell {
-    /// Makes new `Shell` with given `frame_rate`.
+    /// Makes new `Shell` with given `frame_rate`,
+    /// showing `default_app` whenever no other app is open.
     #[inline(always)]
-    pub fn new(frame_rate: u64) -> Self {
+    pub fn new(frame_rate: u64, default_app: Box<dyn App>) -> Self {
         Self {
             topbar: TopBar::default(),
-            desktop: Desktop::default(),
+            default_app,
             open: None,
             frame_duration: Duration::from_nanos(1_000_000_000 / frame_rate),
             should_quit: false,
         }
     }
 
-    #[inline(always)]
-    pub fn attach(&mut self, program: Entry) -> &mut Self {
-        self.desktop.add_entry(program);
-        self
-    }
-
+    /// Runs this `Shell`.
     pub fn run(mut self) -> io::Result<()> {
         install_panic_hook();
         let mut terminal = init_terminal()?;
@@ -85,7 +80,7 @@ impl Shell {
 
             terminal.draw(|frame| {
                 let (bar_area, content_area) = TopBar::<ShellAction>::split(frame.area());
-                self.current_app().draw(frame, content_area);
+                self.current_app_mut_ref().draw(frame, content_area);
                 self.topbar.draw(frame, bar_area);
             })?;
 
@@ -108,10 +103,22 @@ impl Shell {
                 continue;
             }
 
-            let signal = self.current_app().handle_event(&event, content_area);
+            let signal = self
+                .current_app_mut_ref()
+                .handle_event(&event, content_area);
             self.apply_signal(signal);
         }
         Ok(())
+    }
+
+    fn run_action(&mut self, action: ShellAction) {
+        match action {
+            ShellAction::ShutDown => self.should_quit = true,
+            ShellAction::AppItem(id) => {
+                let signal = self.current_app_mut_ref().handle_menu_action(id);
+                self.apply_signal(signal);
+            }
+        }
     }
 
     #[inline(always)]
@@ -129,32 +136,21 @@ impl Shell {
         }
     }
 
-    #[inline(always)]
-    fn current_app(&mut self) -> &mut dyn App {
-        match &mut self.open {
-            Some(app) => app.as_mut(),
-            None => &mut self.desktop,
-        }
-    }
-
     /// Builds this frame's [`Menu`]s.
     fn build_menus(&self) -> Vec<Menu<ShellAction>> {
         let system = Menu::new("[@]", vec![MenuItem::new(
             fl!(LOADER, "menu-system-shutdown"),
             ShellAction::ShutDown,
         )]);
-        let mut menus = vec![system];
 
-        if let Some(app) = &self.open {
-            let items = app
-                .menu_actions()
-                .into_iter()
-                .map(|item| MenuItem::new(item.label, ShellAction::AppItem(item.action)))
-                .collect();
-            menus.push(Menu::new(app.name(), items));
-        }
+        let current = self.current_app_ref();
+        let items = current
+            .menu_actions()
+            .into_iter()
+            .map(|item| MenuItem::new(item.label, ShellAction::AppItem(item.action)))
+            .collect();
 
-        menus
+        vec![system, Menu::new(current.name(), items)]
     }
 
     fn handle_menu_event(&mut self, event: &Event, bar_area: Rect) -> bool {
@@ -168,16 +164,19 @@ impl Shell {
         }
     }
 
-    fn run_action(&mut self, action: ShellAction) {
-        match action {
-            ShellAction::ShutDown => self.should_quit = true,
-            ShellAction::AppItem(id) => {
-                let signal = match &mut self.open {
-                    Some(app) => app.handle_menu_action(id),
-                    None => AppSignal::Continue,
-                };
-                self.apply_signal(signal);
-            }
+    #[inline(always)]
+    fn current_app_mut_ref(&mut self) -> &mut dyn App {
+        match &mut self.open {
+            Some(app) => app.as_mut(),
+            None => self.default_app.as_mut(),
+        }
+    }
+
+    #[inline(always)]
+    fn current_app_ref(&self) -> &dyn App {
+        match &self.open {
+            Some(app) => app.as_ref(),
+            None => self.default_app.as_ref(),
         }
     }
 }
@@ -264,7 +263,9 @@ mod tests {
         }
 
         fn handle_menu_action(&mut self, action: &str) -> AppSignal {
-            if action == self.close_on {
+            if action == "open" {
+                AppSignal::Open(Box::new(DummyApp::new()))
+            } else if action == self.close_on {
                 AppSignal::Close
             } else {
                 AppSignal::Continue
@@ -278,15 +279,19 @@ mod tests {
         fn draw(&mut self, _frame: &mut Frame, _area: Rect) {}
     }
 
+    fn test_shell() -> Shell {
+        Shell::new(30, Box::new(DummyApp::new()))
+    }
+
     fn shell_with_open_dummy() -> Shell {
-        let mut shell = Shell::new(30);
+        let mut shell = test_shell();
         shell.open = Some(Box::new(DummyApp::new()));
         shell
     }
 
     #[test]
     fn shutdown_action_sets_should_quit() {
-        let mut shell = Shell::new(30);
+        let mut shell = test_shell();
         shell.run_action(ShellAction::ShutDown);
         assert!(shell.should_quit);
     }
@@ -306,14 +311,30 @@ mod tests {
     }
 
     #[test]
-    fn open_signal_from_the_desktop_replaces_the_shown_app() {
-        let mut shell = Shell::new(30);
+    fn build_menus_includes_the_default_apps_own_menu_when_nothing_is_open() {
+        let shell = test_shell();
+        let menus = shell.build_menus();
+        assert_eq!(menus.len(), 2);
+        assert_eq!(menus[1].label, "Dummy");
+        assert_eq!(menus[1].items.len(), 2);
+    }
+
+    #[test]
+    fn app_item_action_reaches_the_default_app_when_nothing_is_open() {
+        let mut shell = test_shell();
+        shell.run_action(ShellAction::AppItem("open"));
+        assert!(shell.open.is_some());
+    }
+
+    #[test]
+    fn open_signal_from_the_default_app_replaces_the_shown_app() {
+        let mut shell = test_shell();
         shell.apply_signal(AppSignal::Open(Box::new(DummyApp::new())));
         assert!(shell.open.is_some());
     }
 
     #[test]
-    fn close_signal_returns_to_the_desktop() {
+    fn close_signal_returns_to_the_default_app() {
         let mut shell = shell_with_open_dummy();
         shell.apply_signal(AppSignal::Close);
         assert!(shell.open.is_none());
