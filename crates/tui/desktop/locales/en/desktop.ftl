@@ -1,0 +1,1 @@
+menu-desktop-label = Desktop

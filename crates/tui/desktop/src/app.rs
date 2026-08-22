@@ -6,13 +6,10 @@ use ratatui::{
     style::{Color, Style},
     widgets::Paragraph,
 };
+use shell::{App, AppSignal, Entry, ICON_COLS, ICON_ROWS, MenuItem};
 
 use crate::{
-    App, AppSignal, Entry, MenuItem,
-    desktop::{
-        ICON_COLS, ICON_ROWS,
-        grid::{Grid, GridConfig},
-    },
+    grid::{Grid, GridConfig},
     i18n::LOADER,
 };
 
@@ -40,7 +37,7 @@ enum Direction {
 /// Desktop with launchable icons.
 #[must_use]
 #[derive(Default)]
-pub(crate) struct Desktop {
+pub struct Desktop {
     entries: Vec<Entry>,
     selected: Option<usize>,
 }
@@ -48,7 +45,7 @@ pub(crate) struct Desktop {
 impl Desktop {
     /// Adds new [`Entry`] to this `Desktop`.
     #[inline(always)]
-    pub(crate) fn add_entry(&mut self, program: Entry) {
+    pub fn add_entry(&mut self, program: Entry) {
         self.entries.push(program);
     }
 
@@ -149,7 +146,7 @@ impl App for Desktop {
     fn draw(&mut self, frame: &mut Frame, area: Rect) {
         frame
             .buffer_mut()
-            .set_style(area, Style::default().bg(Color::White));
+            .set_style(area, Style::default().bg(Color::Gray));
 
         for (index, rect) in grid(area).iter(self.entries.len()).enumerate() {
             draw_icon(
@@ -164,20 +161,31 @@ impl App for Desktop {
 
 /// Draws icon inside given `area`.
 fn draw_icon(frame: &mut Frame, area: Rect, entry: &Entry, selected: bool) {
-    let icon = entry.icon();
+    let name_area =
+        Rect::new(area.x, area.y + 1 + ICON_ROWS as u16, area.width, 1).intersection(area);
+
     let buffer = frame.buffer_mut();
+    buffer.set_style(name_area, Style::default().bg(Color::White));
 
     if selected {
-        buffer.set_style(area, Style::default().bg(Color::LightBlue));
+        let overlay = Color::LightBlue;
+        for y in area.top()..area.bottom() {
+            for x in area.left()..area.right() {
+                if let Some(cell) = buffer.cell_mut((x, y)) {
+                    let bg_blended = blend(cell.bg, overlay, 0.5);
+                    let fg_blended = blend(cell.fg, overlay, 0.5);
+                    cell.set_style(Style::default().fg(fg_blended).bg(bg_blended));
+                }
+            }
+        }
     }
 
+    let icon = entry.icon();
     for row in 0..ICON_ROWS {
         let y = area.y + 1 + row as u16;
-
         if y >= area.bottom() {
             break;
         }
-
         for col in 0..ICON_COLS {
             let x = area.x + 1 + col as u16;
             if x >= area.right() {
@@ -192,8 +200,6 @@ fn draw_icon(frame: &mut Frame, area: Rect, entry: &Entry, selected: bool) {
         }
     }
 
-    let name_area =
-        Rect::new(area.x, area.y + 1 + ICON_ROWS as u16, area.width, 1).intersection(area);
     if let Some(name) = truncate_name(entry.name(), name_area.width as usize) {
         frame.render_widget(
             Paragraph::new(name)
@@ -201,6 +207,31 @@ fn draw_icon(frame: &mut Frame, area: Rect, entry: &Entry, selected: bool) {
                 .alignment(Alignment::Center),
             name_area,
         );
+    }
+}
+
+/// Mixes `overlay` into `base` by `alpha` (0.0 = all `base`, 1.0 = all
+/// `overlay`).
+fn blend(base: Color, overlay: Color, alpha: f32) -> Color {
+    let (base_r, base_g, base_b) = color_to_rgb(base);
+    let (overlay_r, overlay_g, overlay_b) = color_to_rgb(overlay);
+    let mix = |base: u8, overlay: u8| {
+        (f32::from(base) * (1.0 - alpha) + f32::from(overlay) * alpha).round() as u8
+    };
+    Color::Rgb(
+        mix(base_r, overlay_r),
+        mix(base_g, overlay_g),
+        mix(base_b, overlay_b),
+    )
+}
+
+/// Approximates `color` as RGB.
+fn color_to_rgb(color: Color) -> (u8, u8, u8) {
+    match color {
+        Color::Rgb(r, g, b) => (r, g, b),
+        Color::White => (255, 255, 255),
+        Color::LightBlue => (96, 160, 255),
+        _ => (0, 0, 0),
     }
 }
 
@@ -224,9 +255,9 @@ fn truncate_name(name: &str, max_width: usize) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use crossterm::event::{KeyModifiers, MouseEvent};
+    use shell::Icon;
 
     use super::*;
-    use crate::Icon;
 
     const ICON: Icon = Icon::solid([[' '; ICON_COLS]; ICON_ROWS], Color::White);
 
